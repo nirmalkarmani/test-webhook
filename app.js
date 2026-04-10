@@ -1,37 +1,27 @@
-// Import Express.js
-const express = require('express');
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
 
-// Create an Express app
-const app = express();
+    const VERIFY_TOKEN = "my_test_token_123";
 
-// Middleware to parse JSON bodies
-app.use(express.json());
+    if (request.method === "GET") {
+      const mode = url.searchParams.get("hub.mode");
+      const challenge = url.searchParams.get("hub.challenge");
+      const token = url.searchParams.get("hub.verify_token");
 
-// Set port and verify_token
-const port = process.env.PORT || 3000;
-const verifyToken = process.env.VERIFY_TOKEN;
+      if (mode === "subscribe" && token === VERIFY_TOKEN) {
+        return new Response(challenge, { status: 200 });
+      } else {
+        return new Response("Forbidden", { status: 403 });
+      }
+    }
 
-// Route for GET requests
-app.get('/', (req, res) => {
-  const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
+    if (request.method === "POST") {
+      const body = await request.json();
+      console.log("Webhook received:", JSON.stringify(body));
+      return new Response("OK", { status: 200 });
+    }
 
-  if (mode === 'subscribe' && token === verifyToken) {
-    console.log('WEBHOOK VERIFIED');
-    res.status(200).send(challenge);
-  } else {
-    res.status(403).end();
+    return new Response("Not Found", { status: 404 });
   }
-});
-
-// Route for POST requests
-app.post('/', (req, res) => {
-  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  console.log(`\n\nWebhook received ${timestamp}\n`);
-  console.log(JSON.stringify(req.body, null, 2));
-  res.status(200).end();
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`\nListening on port ${port}\n`);
-});
+};
